@@ -7,6 +7,8 @@ class Host:
 	def __init__(self, host, a_record, mx_record, ns, verbose=False):
 		self.host = host
 		self.ns = ns
+		if ns == None:
+			self.ns = resolver.Resolver(configure=True).nameservers
 		self.a_record = a_record
 		self.mx_record = mx_record
 		self.verbose = verbose
