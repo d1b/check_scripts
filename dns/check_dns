@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+from dns import message, query, resolver
+import dns
+import socket
+
+class Host:
+	def __init__(self, host, a_record, mx_record, ns, verbose=False):
+		self.host = host
+		self.ns = ns
+		self.a_record = a_record
+		self.mx_record = mx_record
+		self.verbose = verbose
+	def check_record_type(self, expect, type):
+		for ns in self.ns:
+			a_ns = ns
+			socket.setdefaulttimeout(2)
+			ns = socket.gethostbyname(ns)
+			resv = resolver.Resolver(configure=True)
+			resv.nameservers = [ns]
+			query_r = []
+			try:
+				query_r = self.perform_query(type, resv)
+			except dns.exception.Timeout, e:
+				print a_ns, "experienced a dns timeout"
+				raise(e)
+
+			assert set(query_r) == set(expect), "expected " + str(expect) +" the query returned " + str(query_r)
+			if self.verbose:
+				print a_ns, "has the expected", type, "record"
+
+	def perform_query(self, type, resv):
+		if type == "A":
+			return [rdata.address for rdata in resv.query(self.host, type)]
+
+		elif type == "MX":
+			return [(rdata.exchange.to_text(), rdata.preference) for rdata in resv.query(self.host, type)]
+
+
+	def check_a_record(self):
+		self.check_record_type(self.a_record, "A")
+	def check_mx_record(self):
+		self.check_record_type(self.mx_record, "MX")
+
+
+def get_ns_in_range(start, end, name):
+	return ["ns" +str(i) + name  for i in range(start,end+1)]
+
+def get_google_apps_mx_r():
+	return [("aspmx5.googlemail.com.", 30),("aspmx.l.google.com.", 10), ("alt1.aspmx.l.google.com.", 20), ("alt2.aspmx.l.google.com.", 20), ("aspmx2.googlemail.com.", 30), ("aspmx3.googlemail.com.",30), ("aspmx4.googlemail.com.", 30)]
+
+
+if __name__ == "__main__":
+	d1b = Host("d1b.org", ["72.14.189.180"], get_google_apps_mx_r(), get_ns_in_range(1, 5, ".linode.com"))
+	d1b.check_a_record()
+	d1b.check_mx_record()
