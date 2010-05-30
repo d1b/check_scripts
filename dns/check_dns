@@ -3,6 +3,9 @@ from dns import message, query, resolver
 import dns
 import socket
 
+class HostException(Exception):
+	pass
+
 class Host:
 	def __init__(self, host, a_record, mx_record, ns, verbose=False):
 		self.host = host
@@ -12,7 +15,7 @@ class Host:
 		self.a_record = a_record
 		self.mx_record = mx_record
 		self.verbose = verbose
-	def check_record_type(self, expect, type):
+	def check_record_type(self, expected, type):
 		for ns in self.ns:
 			a_ns = ns
 			socket.setdefaulttimeout(2)
@@ -26,7 +29,8 @@ class Host:
 				print a_ns, "experienced a dns timeout"
 				raise(e)
 
-			assert set(query_r) == set(expect), "expected " + str(expect) +" the query returned " + str(query_r)
+			if set(query_r) != set(expected):
+				raise HostException("expected " + str(expected) +" the query returned " + str(query_r))
 			if self.verbose:
 				print a_ns, "has the expected", type, "record"
 
