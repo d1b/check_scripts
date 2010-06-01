@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from dns import message, query, resolver
+from dns import message, query, resolver, message, rdataclass, rdatatype
 import dns
 import socket
 
@@ -7,13 +7,15 @@ class HostException(Exception):
 	pass
 
 class Host:
-	def __init__(self, host, a_record, mx_record, ns, verbose=False):
+	def __init__(self, host, a_record, mx_record, ns, a_ttl=300, mx_ttl=300, verbose=False):
 		self.host = host
 		self.ns = ns
 		if ns == None:
 			self.ns = resolver.Resolver(configure=True).nameservers
 		self.a_record = a_record
 		self.mx_record = mx_record
+		self.a_ttl = a_ttl
+		self.mx_ttl = mx_ttl
 		self.verbose = verbose
 	def check_record_type(self, expected, type):
 		for ns in self.ns:
@@ -41,11 +43,33 @@ class Host:
 		elif type == "MX":
 			return [(rdata.exchange.to_text(), rdata.preference) for rdata in resv.query(self.host, type)]
 
+		elif type == "NS":
+			return [rdata.to_text()[:-1] for rdata in resv.query(self.host, type)]
+
+		elif type == "A_TTL":
+			return [self.check_record_ttl("A", resv.nameservers[0], self.a_ttl) ]
+
+		elif type == "MX_TTL":
+			return [self.check_record_ttl("MX", resv.nameservers[0], self.mx_ttl)]
+
 
 	def check_a_record(self):
 		self.check_record_type(self.a_record, "A")
 	def check_mx_record(self):
 		self.check_record_type(self.mx_record, "MX")
+	def check_ns_record(self):
+		self.check_record_type(self.ns, "NS")
+	def check_a_ttl(self):
+		self.check_record_type([self.a_ttl], "A_TTL")
+	def check_mx_ttl(self):
+		self.check_record_type([self.mx_ttl], "MX_TTL")
+
+	def check_record_ttl(self, type, ns, ttl_exp):
+		socket.setdefaulttimeout(2)
+		ns = socket.gethostbyname(ns)
+		req = message.make_query(dns.name.from_text(self.host), rdatatype.from_text(type), rdataclass.IN )
+		resp = query.udp(req, ns, 2, 53)
+		return resp.answer[0].ttl
 
 
 def get_ns_in_range(start, end, name):
@@ -56,6 +80,9 @@ def get_google_apps_mx_r():
 
 
 if __name__ == "__main__":
-	d1b = Host("d1b.org", ["72.14.189.180"], get_google_apps_mx_r(), get_ns_in_range(1, 5, ".linode.com"))
+	d1b = Host("d1b.org", ["173.230.154.90"], get_google_apps_mx_r(), get_ns_in_range(1, 5, ".linode.com"))
 	d1b.check_a_record()
 	d1b.check_mx_record()
+	d1b.check_ns_record()
+	d1b.check_mx_ttl()
+	d1b.check_a_ttl()
