@@ -10,14 +10,14 @@ class Host:
 	def __init__(self, host, a_record, mx_record, ns, a_ttl=300, mx_ttl=300, verbose=False):
 		self.host = host
 		self.ns = ns
-		if ns == None:
+		if ns is None:
 			self.ns = resolver.Resolver(configure=True).nameservers
 		self.a_record = a_record
 		self.mx_record = mx_record
 		self.a_ttl = a_ttl
 		self.mx_ttl = mx_ttl
 		self.verbose = verbose
-	def check_record_type(self, expected, type):
+	def check_record_type(self, expected, type_rec):
 		for ns in self.ns:
 			a_ns = ns
 			socket.setdefaulttimeout(2)
@@ -26,30 +26,30 @@ class Host:
 			resv.nameservers = [ns]
 			query_r = []
 			try:
-				query_r = self.perform_query(type, resv)
+				query_r = self.perform_query(type_rec, resv)
 			except dns.exception.Timeout, e:
 				print a_ns, "experienced a dns timeout"
 				raise(e)
 
 			if set(query_r) != set(expected):
-				raise HostException("expected " + str(expected) +" the query returned " + str(query_r))
+				raise HostException("expected " + str(expected) + " the query returned " + str(query_r))
 			if self.verbose:
-				print a_ns, "has the expected", type, "record"
+				print a_ns, "has the expected", type_rec, "record"
 
-	def perform_query(self, type, resv):
-		if type == "A":
-			return [rdata.address for rdata in resv.query(self.host, type)]
+	def perform_query(self, type_rec, resv):
+		if type_rec == "A":
+			return [rdata.address for rdata in resv.query(self.host, type_rec)]
 
-		elif type == "MX":
-			return [(rdata.exchange.to_text(), rdata.preference) for rdata in resv.query(self.host, type)]
+		elif type_rec == "MX":
+			return [(rdata.exchange.to_text(), rdata.preference) for rdata in resv.query(self.host, type_rec)]
 
-		elif type == "NS":
-			return [rdata.to_text()[:-1] for rdata in resv.query(self.host, type)]
+		elif type_rec == "NS":
+			return [rdata.to_text()[:-1] for rdata in resv.query(self.host, type_rec)]
 
-		elif type == "A_TTL":
+		elif type_rec == "A_TTL":
 			return [self.check_record_ttl("A", resv.nameservers[0], self.a_ttl) ]
 
-		elif type == "MX_TTL":
+		elif type_rec == "MX_TTL":
 			return [self.check_record_ttl("MX", resv.nameservers[0], self.mx_ttl)]
 
 
@@ -64,16 +64,16 @@ class Host:
 	def check_mx_ttl(self):
 		self.check_record_type([self.mx_ttl], "MX_TTL")
 
-	def check_record_ttl(self, type, ns, ttl_exp):
+	def check_record_ttl(self, type_rec, ns, ttl_exp):
 		socket.setdefaulttimeout(2)
 		ns = socket.gethostbyname(ns)
-		req = message.make_query(dns.name.from_text(self.host), rdatatype.from_text(type), rdataclass.IN )
+		req = message.make_query(dns.name.from_text(self.host), rdatatype.from_text(type_rec), rdataclass.IN )
 		resp = query.udp(req, ns, 2, 53)
 		return resp.answer[0].ttl
 
 
 def get_ns_in_range(start, end, name):
-	return ["ns" +str(i) + name  for i in range(start,end+1)]
+	return ["ns" + str(i) + name  for i in range(start, end + 1)]
 
 def get_google_apps_mx_r():
 	return [("aspmx5.googlemail.com.", 30),("aspmx.l.google.com.", 10), ("alt1.aspmx.l.google.com.", 20), ("alt2.aspmx.l.google.com.", 20), ("aspmx2.googlemail.com.", 30), ("aspmx3.googlemail.com.",30), ("aspmx4.googlemail.com.", 30)]
