@@ -5,11 +5,12 @@ import socket
 from dns.rdataclass import *
 from dns.rdatatype import *
 import dns.zone
+from dns.exception import DNSException
 class HostException(Exception):
 	pass
 
 class Host:
-	def __init__(self, host, a_record, mx_record, ns, a_ttl=300, mx_ttl=300, verbose=False):
+	def __init__(self, host, a_record, mx_record, ns, a_ttl=300, mx_ttl=300, xfr_possible=False, verbose=False):
 		self.host = host
 		self.ns = ns
 		if ns is None:
@@ -19,6 +20,7 @@ class Host:
 		self.a_ttl = a_ttl
 		self.mx_ttl = mx_ttl
 		self.verbose = verbose
+		self.xfr_possible = xfr_possible
 	def check_record_type(self, expected, type_rec):
 		for ns in self.ns:
 			a_ns = ns
@@ -32,8 +34,9 @@ class Host:
 			except dns.exception.Timeout, e:
 				print a_ns, "experienced a dns timeout"
 				raise(e)
-
-			if set(query_r) != set(expected):
+			if type_rec == "XFR":
+				pass
+			elif set(query_r) != set(expected):
 				raise HostException("expected " + str(expected) + " the query returned " + str(query_r))
 			if self.verbose:
 				print a_ns, "has the expected", type_rec, "record"
@@ -54,6 +57,16 @@ class Host:
 		elif type_rec == "MX_TTL":
 			return [self.check_record_ttl("MX", resv.nameservers[0], self.mx_ttl)]
 
+		elif type_rec == "XFR":
+			result_t = None
+			try:
+				result_t = dns.zone.from_xfr(dns.query.xfr(resv.nameservers[0], self.host))
+			except DNSException, e:
+				pass
+			if self.xfr_possible:
+				assert result_t != None, "xfr should BE possible - ns: " + resv.nameservers[0]
+			if not self.xfr_possible:
+				assert result_t is None, "xfr should NOT be possible - ns: " + resv.nameservers[0]
 
 	def check_a_record(self):
 		self.check_record_type(self.a_record, "A")
@@ -65,6 +78,8 @@ class Host:
 		self.check_record_type([self.a_ttl], "A_TTL")
 	def check_mx_ttl(self):
 		self.check_record_type([self.mx_ttl], "MX_TTL")
+	def check_xfr(self):
+		self.check_record_type(None, "XFR")
 
 	def check_record_ttl(self, type_rec, ns, ttl_exp):
 		socket.setdefaulttimeout(2)
@@ -90,6 +105,7 @@ def get_records_from_zone_file(host, file_name):
 
 if __name__ == "__main__":
 	d1b = Host("d1b.org", ["173.230.154.90"], get_google_apps_mx_r(), get_ns_in_range(1, 5, ".linode.com"))
+	d1b.check_xfr()
 	d1b.check_a_record()
 	d1b.check_mx_record()
 	d1b.check_ns_record()
@@ -104,3 +120,5 @@ if __name__ == "__main__":
 	d1b_using_zone.check_mx_ttl()
 	d1b_using_zone.check_a_ttl()
 
+	test_xfr = Host("gov", ["XXX"], None, ["A.USADOTGOV.NET", "g.usadotgov.net", "c.usadotgov.net"] , None, None, False, True)
+	test_xfr.check_xfr()
