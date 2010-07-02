@@ -1,0 +1,24 @@
+; d1b.org [50120]
+$TTL 300
+@	IN	SOA	ns1.linode.com. abuse.d1b.org. (
+					2010070200
+					3600
+					3600
+					604800
+					300
+				)
+@		NS	ns1.linode.com.
+@		NS	ns2.linode.com.
+@		NS	ns3.linode.com.
+@		NS	ns4.linode.com.
+@		NS	ns5.linode.com.
+@			MX	20	alt1.aspmx.l.google.com.
+@		300	MX	10	aspmx.l.google.com.
+@		300	MX	20	alt2.aspmx.l.google.com.
+@			MX	30	aspmx2.googlemail.com.
+@			MX	30	aspmx3.googlemail.com.
+@			MX	30	aspmx4.googlemail.com.
+@			MX	30	aspmx5.googlemail.com.
+cookie			TXT	"GIVE ME "
+@			A	173.230.154.90
+linode			A	173.230.154.90

@@ -2,7 +2,9 @@
 from dns import message, query, resolver, message, rdataclass, rdatatype
 import dns
 import socket
-
+from dns.rdataclass import *
+from dns.rdatatype import *
+import dns.zone
 class HostException(Exception):
 	pass
 
@@ -78,6 +80,13 @@ def get_ns_in_range(start, end, name):
 def get_google_apps_mx_r():
 	return [("aspmx5.googlemail.com.", 30),("aspmx.l.google.com.", 10), ("alt1.aspmx.l.google.com.", 20), ("alt2.aspmx.l.google.com.", 20), ("aspmx2.googlemail.com.", 30), ("aspmx3.googlemail.com.",30), ("aspmx4.googlemail.com.", 30)]
 
+def get_records_from_zone_file(host, file_name):
+	zone = dns.zone.from_file(file_name, host)
+	a_record = [addr.to_text() for (name, ttl, addr) in  zone.iterate_rdatas(A) if name.to_text() == host]
+	ns_record = [addr.to_text() for (name, ttl, addr) in  zone.iterate_rdatas(NS) if name.to_text() == host]
+	mx_record = [(rdata.exchange.to_text() + ".", rdata.preference) for (name, ttl, rdata) in  zone.iterate_rdatas(MX)]
+	return a_record, mx_record, ns_record
+
 
 if __name__ == "__main__":
 	d1b = Host("d1b.org", ["173.230.154.90"], get_google_apps_mx_r(), get_ns_in_range(1, 5, ".linode.com"))
@@ -86,3 +95,12 @@ if __name__ == "__main__":
 	d1b.check_ns_record()
 	d1b.check_mx_ttl()
 	d1b.check_a_ttl()
+
+	a_record, mx_record, ns_record = get_records_from_zone_file("@", "example-zone")
+	d1b_using_zone = Host("d1b.org", a_record, mx_record, ns_record)
+	d1b_using_zone.check_a_record()
+	d1b_using_zone.check_mx_record()
+	d1b_using_zone.check_ns_record()
+	d1b_using_zone.check_mx_ttl()
+	d1b_using_zone.check_a_ttl()
+
