@@ -72,9 +72,10 @@ def get_cpu_time_pid(pid):
 
 def print_pid_proc_info(process_info_pid, total_ctxt):
 	process_info_pid = sorted(process_info_pid, key=lambda proc: proc[0][1])
+	print "pid, app name, context switches, overall context switch %, cputime"
 	for info_proc, pid in process_info_pid:
 		pid_cpu_time = get_cpu_time_pid(pid)
-		print pid, info_proc[0], info_proc[1], get_percent_out_of_total(info_proc[1], total_ctxt), "cpu time", pid_cpu_time
+		print pid, info_proc[0], info_proc[1], get_percent_out_of_total(info_proc[1], total_ctxt), pid_cpu_time
 
 def get_percent_out_of_total(item, total):
 	if item == 0:
