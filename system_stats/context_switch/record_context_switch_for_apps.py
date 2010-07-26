@@ -67,16 +67,20 @@ def get_name_ctxt_date(proc):
 			name = data.replace("\n", "")
 	return name, ctxt, date
 
+def get_cpu_time_pid(pid):
+	return int(read_from_a_file("/proc/" + pid + "/schedstat", "read").split(" ")[0])
+
 def print_pid_proc_info(process_info_pid, total_ctxt):
 	process_info_pid = sorted(process_info_pid, key=lambda proc: proc[0][1])
 	for info_proc, pid in process_info_pid:
-		print pid, info_proc[0], info_proc[1], get_percent_ctxt_out_of_total(info_proc[1], total_ctxt)
+		pid_cpu_time = get_cpu_time_pid(pid)
+		print pid, info_proc[0], info_proc[1], get_percent_out_of_total(info_proc[1], total_ctxt), "cpu time", pid_cpu_time
 
-def get_percent_ctxt_out_of_total(proc_ctxt, total_ctxt):
-	if proc_ctxt == 0:
+def get_percent_out_of_total(item, total):
+	if item == 0:
 		return "0%"
 	else:
-		return str( round( ( (proc_ctxt * 100.00) / total_ctxt), 2) ) + "%"
+		return str( round( ( (item * 100.0000) / total), 4) ) + "%"
 
 if __name__ == "__main__":
 	db_name = "ctxt"
