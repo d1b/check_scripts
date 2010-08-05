@@ -88,6 +88,14 @@ class Host:
 		resp = query.udp(req, ns, 2, 53)
 		return resp.answer[0].ttl
 
+	def check_rdns(self):
+		""" if rdns is missing / does not match the forward (provided A for the host), an exception is raised """
+		self.rdns = socket.gethostbyaddr(self.a_record[0])[0]
+		if self.host != self.rdns:
+			raise HostException("expected " + str(self.host) + " the query returned " + str(self.rdns))
+
+
+
 
 def get_ns_in_range(start, end, name):
 	return ["ns" + str(i) + name  for i in range(start, end + 1)]
@@ -111,6 +119,7 @@ if __name__ == "__main__":
 	d1b.check_ns_record()
 	d1b.check_mx_ttl()
 	d1b.check_a_ttl()
+	d1b.check_rdns()
 
 	a_record, mx_record, ns_record = get_records_from_zone_file("@", "example-zone")
 	d1b_using_zone = Host("d1b.org", a_record, mx_record, ns_record)
